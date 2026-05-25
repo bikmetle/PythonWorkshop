@@ -97,3 +97,5 @@ temp/
 # Secrets
 secrets.json
 config.local.py
+
+.env
