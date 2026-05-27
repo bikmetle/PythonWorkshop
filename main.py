@@ -1,3 +1,4 @@
+from openai import OpenAI
 import asyncio
 import logging
 import sys
@@ -13,8 +14,10 @@ load_dotenv()
 
 
 TOKEN = os.getenv("TOKEN")
+OPENAI_TOKEN = os.getenv("OPENAI_TOKEN")
 
 dp = Dispatcher()
+client = OpenAI(api_key=OPENAI_TOKEN)
 
 
 @dp.message(CommandStart())
@@ -24,10 +27,16 @@ async def command_start_handler(message: Message) -> None:
 
 @dp.message()
 async def echo_handler(message: Message) -> None:
-    try:
-        await message.send_copy(chat_id=message.chat.id)
-    except TypeError:
-        await message.answer("Nice try!")
+    if message.text:
+        response = client.responses.create(
+            model="gpt-5.5",
+            input=message.text,
+        )
+
+        await message.answer(response.output_text)
+
+    else:
+        await message.answer("Nice try")
 
 
 async def main() -> None:
