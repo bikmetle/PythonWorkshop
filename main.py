@@ -15,7 +15,7 @@ from aiogram.types import Message
 from dotenv import load_dotenv
 
 from models import Usage
-from utils import add_usage
+from utils import add_usage, get_usage
 
 load_dotenv()
 
@@ -34,6 +34,12 @@ async def command_start_handler(message: Message) -> None:
 @dp.message()
 async def echo_handler(message: Message, bot: Bot) -> None:
     try:
+        total_tokens = get_usage(message.from_user.id)
+        
+        if total_tokens > 200:
+            await message.answer("Бесплатная версия закончилась. Оплатите, чтобы продолжить пользоваться данным ChatGPT!")
+            return
+        
         if message.text:
             response = await client.responses.create(
                 model="gpt-5.5",

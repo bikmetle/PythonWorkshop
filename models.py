@@ -6,7 +6,7 @@ from datetime import datetime
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-engine = create_engine("sqlite:///chatbot", echo=True)
+engine = create_engine("sqlite:///chatbot.db", echo=True)
 Session = sessionmaker(engine)
 
 
