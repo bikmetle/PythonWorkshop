@@ -15,7 +15,7 @@ from aiogram.types import Message
 from dotenv import load_dotenv
 
 from models import Usage
-from utils import add_usage, get_usage
+from utils import add_usage, get_usage, message_text, voice_message_text
 
 load_dotenv()
 
@@ -35,46 +35,22 @@ async def command_start_handler(message: Message) -> None:
 async def echo_handler(message: Message, bot: Bot) -> None:
     try:
         total_tokens = get_usage(message.from_user.id)
-        
+
         if total_tokens > 200:
             await message.answer("Бесплатная версия закончилась. Оплатите, чтобы продолжить пользоваться данным ChatGPT!")
             return
         
         if message.text:
-            response = await client.responses.create(
-                model="gpt-5.5",
-                input=message.text,
-            )
-
-            await message.answer(response.output_text)
+            total_tokens = await message_text(message, client)
 
         elif message.voice:
-            file = await bot.get_file(message.voice.file_id)
-
-            audio_buffer = BytesIO()
-            await bot.download_file(file.file_path, audio_buffer)
-
-            audio_buffer.seek(0)
-            audio_buffer.name = "voice.ogg"
-
-            transcription = await client.audio.transcriptions.create(
-                model="gpt-4o-transcribe",
-                file=audio_buffer,
-            )
-
-            response = await client.responses.create(
-                model="gpt-5.5",
-                input=transcription.text,
-            )
-
-            await message.answer(response.output_text)
+            total_tokens = await voice_message_text(message, bot, client)
 
         else:
             await message.answer(
                 "Ну ты конечно красавчик, я не отрицаю, но давай мне текст или голосовое сообщение своё сюда!"
             )
             return
-        total_tokens = response.usage.total_tokens
         usage = Usage(
             tg_id=message.from_user.id, created_at=datetime.now(), tokens=total_tokens
         )
