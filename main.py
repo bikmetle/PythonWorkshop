@@ -6,12 +6,16 @@ import sys
 from os import getenv
 from io import BytesIO
 
+from datetime import datetime
 from aiogram import Bot, Dispatcher, html
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.filters import CommandStart
 from aiogram.types import Message
 from dotenv import load_dotenv
+
+from models import Usage
+from utils import add_usage
 
 load_dotenv()
 
@@ -63,17 +67,19 @@ async def echo_handler(message: Message, bot: Bot) -> None:
             await message.answer(
                 "Ну ты конечно красавчик, я не отрицаю, но давай мне текст или голосовое сообщение своё сюда!"
             )
-
+            return
+        total_tokens = response.usage.total_tokens
+        usage = Usage(
+            tg_id=message.from_user.id, created_at=datetime.now(), tokens=total_tokens
+        )
+        add_usage(usage)
     except Exception as e:
         logging.exception(e)
         await message.answer("Произошла ошибка при обращении к OpenAI.")
 
 
 async def main() -> None:
-    bot = Bot(
-        token=TOKEN,
-        default=DefaultBotProperties(parse_mode=ParseMode.HTML)
-    )
+    bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 
     await dp.start_polling(bot)
 
