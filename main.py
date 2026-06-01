@@ -34,7 +34,7 @@ async def echo_handler(message: Message) -> None:
     with Session(engine) as session:
         total_tokens = session.scalar(
             select(func.coalesce(func.sum(Usage.tokens), 0)).where(
-                Usage.tg_id == message.from_user.id
+                Usage.user_id == message.from_user.id
             )
         )
 
@@ -54,7 +54,7 @@ async def echo_handler(message: Message) -> None:
             if usage is None:
                 session.add(
                     Usage(
-                        tg_id=message.from_user.id,
+                        user_id=message.from_user.id,
                         created_at=datetime.now(),
                         tokens=tokens_spent,
                     )
