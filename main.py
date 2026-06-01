@@ -27,7 +27,7 @@ client = AsyncOpenAI(api_key=OPENAI_TOKEN)
 
 @dp.message(CommandStart())
 async def command_start_handler(message: Message) -> None:
-    await message.answer('Привет!')
+    await message.answer(f"Hello, {html.bold(message.from_user.full_name)}!")
 
 @dp.message()
 async def echo_handler(message: Message, bot: Bot) -> None:
