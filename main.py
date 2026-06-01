@@ -1,16 +1,10 @@
-<<<<<<< HEAD
-=======
 from openai import AsyncOpenAI
 from openai import APIConnectionError
->>>>>>> origin/lession-2-t
 import asyncio
 import logging
 import sys
 from os import getenv
-<<<<<<< HEAD
-=======
 from io import BytesIO
->>>>>>> origin/lession-2-t
 
 from aiogram import Bot, Dispatcher, html
 from aiogram.client.default import DefaultBotProperties
@@ -29,9 +23,7 @@ client = AsyncOpenAI(api_key=OPENAI_TOKEN)
 
 @dp.message(CommandStart())
 async def command_start_handler(message: Message) -> None:
-=======
-    await message.answer(f"Hello, {html.bold(message.from_user.full_name)}!")
-
+    await message.answer('Привет!')
 
 @dp.message()
 async def echo_handler(message: Message, bot: Bot) -> None:
@@ -75,11 +67,9 @@ async def echo_handler(message: Message, bot: Bot) -> None:
         await message.answer("Произошла ошибка при обращении к OpenAI.")
 
 
+
 async def main() -> None:
-    bot = Bot(
-        token=TOKEN,
-        default=DefaultBotProperties(parse_mode=ParseMode.HTML)
-    )
+    bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 
     await dp.start_polling(bot)
 
