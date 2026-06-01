@@ -18,7 +18,3 @@ class Usage(Base):
     tg_id: Mapped[int] = mapped_column(Integer)
     created_at: Mapped[datetime | None] = mapped_column(DateTime)
     tokens: Mapped[int | None]
-
-
-# Create all tables in the engine
-Base.metadata.create_all(engine)
