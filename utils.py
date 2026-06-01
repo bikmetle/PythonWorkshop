@@ -3,18 +3,18 @@ from models import Session, Usage
 from io import BytesIO
 
 
-def add_usage(usage: Usage) -> None:
+def add_object(object) -> None:
     with Session() as session:
         try:
-            session.add(usage)
+            session.add(object)
         except Exception:
             session.rollback()
             raise
         else:
             session.commit()
 
-def get_usage(tg_id: int) -> int:
-    statement = select(Usage).where(Usage.tg_id == tg_id)
+def get_usage(user_id: int) -> int:
+    statement = select(Usage).where(Usage.user_id == user_id)
 
     with Session() as session:
         db_objects = session.scalars(statement).all()

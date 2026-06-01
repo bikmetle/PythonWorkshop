@@ -1,7 +1,9 @@
-from sqlalchemy.orm import DeclarativeBase
+from typing import List
+
+from sqlalchemy.orm import DeclarativeBase, relationship
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
-from sqlalchemy import DateTime, Integer
+from sqlalchemy import DateTime, ForeignKey, Integer, String
 from datetime import datetime
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -13,14 +15,23 @@ Session = sessionmaker(engine)
 class Base(DeclarativeBase):
     pass
 
-
-class Usage(Base):
+class User(Base):
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    tg_id: Mapped[int] = mapped_column(Integer)
-    created_at: Mapped[datetime] = mapped_column(DateTime)
+    created_at: Mapped[datetime | None] = mapped_column(DateTime)
+    first_name: Mapped[str] = mapped_column(String, nullable=True)
+    last_name: Mapped[str] = mapped_column(String, nullable=True)
+    username: Mapped[str] = mapped_column(String, nullable=True)
+
+    usages: Mapped[List["Usage"]] = relationship(back_populates="user")
+
+class Usage(Base):
+    __tablename__ = "usages"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=True)
+    created_at: Mapped[datetime | None] = mapped_column(DateTime)
     tokens: Mapped[int | None]
 
-
-Base.metadata.create_all(engine)
+    user: Mapped[User] = relationship(back_populates="usages")

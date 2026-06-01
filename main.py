@@ -14,8 +14,8 @@ from aiogram.filters import CommandStart
 from aiogram.types import Message
 from dotenv import load_dotenv
 
-from models import Usage
-from utils import add_usage, get_usage, message_text, voice_message_text
+from models import Usage, User
+from utils import add_object, get_usage, message_text, voice_message_text
 
 load_dotenv()
 
@@ -27,6 +27,10 @@ client = AsyncOpenAI(api_key=OPENAI_TOKEN)
 
 @dp.message(CommandStart())
 async def command_start_handler(message: Message) -> None:
+    user = User(
+            id=message.from_user.id, created_at=datetime.now(), first_name=message.from_user.first_name, last_name=message.from_user.last_name, username=message.from_user.username
+        )
+    add_object(user)
     await message.answer(f"Hello, {html.bold(message.from_user.full_name)}!")
 
 @dp.message()
@@ -50,9 +54,9 @@ async def echo_handler(message: Message, bot: Bot) -> None:
             )
             return
         usage = Usage(
-            tg_id=message.from_user.id, created_at=datetime.now(), tokens=total_tokens
+            user_id=message.from_user.id, created_at=datetime.now(), tokens=total_tokens
         )
-        add_usage(usage)
+        add_object(usage)
     except Exception as e:
         logging.exception(e)
         await message.answer("Произошла ошибка при обращении к OpenAI.")
