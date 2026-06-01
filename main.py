@@ -25,11 +25,9 @@ OPENAI_TOKEN = getenv("OPENAI_TOKEN")
 dp = Dispatcher()
 client = AsyncOpenAI(api_key=OPENAI_TOKEN)
 
-
 @dp.message(CommandStart())
 async def command_start_handler(message: Message) -> None:
-    await message.answer(f"Hello, {html.bold(message.from_user.full_name)}!")
-
+    await message.answer('Привет!')
 
 @dp.message()
 async def echo_handler(message: Message, bot: Bot) -> None:
@@ -58,6 +56,7 @@ async def echo_handler(message: Message, bot: Bot) -> None:
     except Exception as e:
         logging.exception(e)
         await message.answer("Произошла ошибка при обращении к OpenAI.")
+
 
 
 async def main() -> None:
