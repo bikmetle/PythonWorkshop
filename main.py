@@ -13,6 +13,7 @@ from aiogram.filters import CommandStart
 from aiogram.types import Message, FSInputFile
 from dotenv import load_dotenv
 from openai import OpenAI
+from sqlalchemy import select
 
 from models import Session, Usage
 
@@ -95,6 +96,14 @@ async def voice_handler(message: Message, bot: Bot) -> None:
 # Обработчик для текстовых сообщений
 @dp.message(F.text)
 async def text_handler(message: Message) -> None:
+    with Session() as session:
+        statement = select(Usage).where(Usage.tg_id == message.from_user.id)
+	    db_objects = session.scalars(statement).all()
+    
+    total_token = sum([obj.tokens for obj in db_objects])
+    if total_token > 100:
+        await message.answer("Лимит превышен. Купите подписку для дальнейшего пользование :)")
+        return
     response = client.responses.create(
         model="gpt-5.5",
         input=message.text
