@@ -98,7 +98,7 @@ async def voice_handler(message: Message, bot: Bot) -> None:
 async def text_handler(message: Message) -> None:
     with Session() as session:
         statement = select(Usage).where(Usage.tg_id == message.from_user.id)
-	    db_objects = session.scalars(statement).all()
+        db_objects = session.scalars(statement).all()
     
     total_token = sum([obj.tokens for obj in db_objects])
     if total_token > 100:
