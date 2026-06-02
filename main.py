@@ -1,4 +1,5 @@
 import asyncio
+from datetime import datetime
 import logging
 
 import os
@@ -12,6 +13,8 @@ from aiogram.filters import CommandStart
 from aiogram.types import Message, FSInputFile
 from dotenv import load_dotenv
 from openai import OpenAI
+
+from models import Session, Usage
 
 load_dotenv()
 
@@ -91,11 +94,23 @@ async def voice_handler(message: Message, bot: Bot) -> None:
 
 # Обработчик для текстовых сообщений
 @dp.message(F.text)
-async def echo_handler(message: Message) -> None:
+async def text_handler(message: Message) -> None:
     response = client.responses.create(
         model="gpt-5.5",
         input=message.text
     )
+    usage = Usage(tg_id=message.from_user.id, created_at=datetime.now(), tokens=response.usage.total_tokens)
+    
+    with Session() as session:
+        try:
+            session.add(usage)
+        except:
+            session.rollback()
+            raise
+        else:
+            session.commit()
+
+
     await message.answer(response.output_text)
 
 
