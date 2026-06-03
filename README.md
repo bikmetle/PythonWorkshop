@@ -93,13 +93,16 @@ bot open ai
 тестовый период пользователю
 
 
+
+Урок 5
+docker
+deploy to vps
+дз сделать проект полностью с нуля
+
+
 дз ключи от юкассы 
 store payment info
 проверять оплату и давать ответ
-
-
-deploy to vps
-
 
 
 vide code
