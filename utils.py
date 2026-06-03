@@ -1,79 +1,102 @@
-from http import client
-import logging
-from mailbox import Message
 import os
-
-from aiogram import Bot
+from datetime import datetime
 from sqlalchemy import select
-from main import TEMP_DIR
+from aiogram import Bot
+from aiogram.types import Message, FSInputFile
+from openai import AsyncOpenAI
 from models import Session, Usage
-from io import BytesIO
 
+FREE_TOKEN_LIMIT = 100
+TEMP_DIR = "temp_audio"
+os.makedirs(TEMP_DIR, exist_ok=True)
 
-def add_object(object) -> None:
+def add_usage(usage: Usage) -> None:
     with Session() as session:
         try:
-            session.add(object)
+            session.add(usage)
         except Exception:
             session.rollback()
             raise
         else:
             session.commit()
 
-# Обработчик только для голосовых сообщений
-@dp.message(F.voice)
-async def voice_handler(message: Message, bot: Bot) -> None:
-    # Показываем пользователю статус, что бот записывает голосовое ответное сообщение
-    await bot.send_chat_action(chat_id=message.chat.id, action="record_voice")
+def get_usage(tg_id: int) -> int:
+    statement = select(Usage).where(Usage.tg_id == tg_id)
+    with Session() as session:
+        db_objects = session.scalars(statement).all()
+    return sum(row.tokens for row in db_objects if row.tokens)
 
-    # Формируем пути для временных файлов на основе ID сообщения
+def check_tokens_limit(tg_id: int) -> bool:
+    total_spent = get_usage(tg_id)
+    return total_spent < FREE_TOKEN_LIMIT
+
+async def process_voice_message(message: Message, bot: Bot, client: AsyncOpenAI) -> None:
+    user_id = message.from_user.id
     input_audio_path = os.path.join(TEMP_DIR, f"in_{message.voice.file_id}.ogg")
     output_audio_path = os.path.join(TEMP_DIR, f"out_{message.voice.file_id}.mp3")
 
     try:
-        # 1. Скачиваем голосовое сообщение из Телеграм
         file_info = await bot.get_file(message.voice.file_id)
         await bot.download_file(file_info.file_path, input_audio_path)
 
-        # 2. Превращаем аудио в текст с помощью OpenAI Whisper
         with open(input_audio_path, "rb") as audio_file:
-            transcription = client.audio.transcriptions.create(
+            transcription = await client.audio.transcriptions.create(
                 model="whisper-1",
                 file=audio_file
             )
         user_text = transcription.text
 
-        # Если Whisper ничего не расслышал
         if not user_text.strip():
             await message.reply("Извини, мне не удалось разобрать слова в голосовом сообщении.")
             return
 
-        # 3. Отправляем распознанный текст в твою модель OpenAI
-        ai_response = client.responses.create(
-            model="gpt-5.5",
-            input=user_text
+        response = await client.chat.completions.create(
+            model="gpt-4o-mini", 
+            messages=[{"role": "user", "content": user_text}]
         )
-        ai_text = ai_response.output_text
+        ai_text = response.choices[0].message.content
+        tokens_used = response.usage.total_tokens
 
-        # 4. Превращаем текстовый ответ ИИ обратно в голос с помощью OpenAI TTS
-        with client.audio.speech.with_streaming_response.create(
+        new_log = Usage(
+            tg_id=user_id, 
+            created_at=datetime.now(), 
+            request_text=user_text, 
+            tokens=tokens_used
+        )
+        add_usage(new_log)
+
+        tts_response = await client.audio.speech.create(
             model="tts-1",
-            voice="alloy",  # Варианты голосов: alloy, echo, fable, onyx, nova, shimmer
+            voice="alloy",
             input=ai_text
-        ) as tts_response:
-            tts_response.stream_to_file(output_audio_path)
+        )
+        await tts_response.aread()
+        tts_response.stream_to_file(output_audio_path)
 
-        # 5. Отправляем аудиофайл пользователю в виде голосового ответа
-        reply_voice = FSInputFile(output_audio_path) # type: ignore
+        reply_voice = FSInputFile(output_audio_path)
         await message.reply_voice(voice=reply_voice)
 
-    except Exception as e:
-        logging.error(f"Ошибка при обработке голоса: {e}")
-        await message.answer("Произошла ошибка при обработке твоего голосового сообщения.")
-
     finally:
-        # Обязательно удаляем временные файлы с диска, чтобы не забивать память
         if os.path.exists(input_audio_path):
             os.remove(input_audio_path)
         if os.path.exists(output_audio_path):
             os.remove(output_audio_path)
+
+async def process_text_message(message: Message, client: AsyncOpenAI) -> None:
+    user_id = message.from_user.id
+    response = await client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": message.text}]
+    )
+    ai_text = response.choices[0].message.content
+    tokens_used = response.usage.total_tokens
+
+    new_log = Usage(
+        tg_id=user_id, 
+        created_at=datetime.now(), 
+        request_text=message.text, 
+        tokens=tokens_used
+    )
+    add_usage(new_log)
+
+    await message.answer(ai_text)
