@@ -14,7 +14,7 @@ from dotenv import load_dotenv
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from models import Usage, engine
+from models import Usage, User, engine
 load_dotenv()
 
 
@@ -24,8 +24,21 @@ OPENAI_TOKEN = os.getenv("OPENAI_TOKEN")
 dp = Dispatcher()
 client = OpenAI(api_key=OPENAI_TOKEN)
 
+
 @dp.message(CommandStart())
 async def command_start_handler(message: Message) -> None:
+    with Session(engine) as session:
+        session.add(
+            User(
+                id=message.from_user.id,
+                created_at=datetime.now(),
+                first_name=message.from_user.first_name,
+                last_name=message.from_user.last_name,
+                username=message.from_user.username,
+            )
+        )
+        session.commit()
+
     await message.answer(f"Hello, {html.bold(message.from_user.full_name)}!")
 
 
@@ -34,7 +47,7 @@ async def echo_handler(message: Message) -> None:
     with Session(engine) as session:
         total_tokens = session.scalar(
             select(func.coalesce(func.sum(Usage.tokens), 0)).where(
-                Usage.tg_id == message.from_user.id
+                Usage.user_id == message.from_user.id
             )
         )
 
@@ -50,19 +63,13 @@ async def echo_handler(message: Message) -> None:
 
         tokens_spent = response.usage.total_tokens
         with Session(engine) as session:
-            usage = session.get(Usage, message.from_user.id)
-            if usage is None:
-                session.add(
-                    Usage(
-                        tg_id=message.from_user.id,
-                        created_at=datetime.now(),
-                        tokens=tokens_spent,
-                    )
+            session.add(
+                Usage(
+                    user_id=message.from_user.id,
+                    created_at=datetime.now(),
+                    tokens=tokens_spent,
                 )
-            else:
-                usage.created_at = datetime.now()
-                usage.tokens = (usage.tokens or 0) + tokens_spent
-
+            )
             session.commit()
 
         await message.answer(response.output_text)
