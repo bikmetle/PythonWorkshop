@@ -106,3 +106,8 @@ store payment info
 
 
 vide code
+
+
+
+docker build -t easy_bot_image .
+docker run -it -d --env-file .env --restart=unless-stopped --name easy_refer easy_bot_image 
