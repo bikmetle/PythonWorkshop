@@ -93,13 +93,22 @@ bot open ai
 тестовый период пользователю
 
 
+
+Урок 5
+docker
+deploy to vps
+дз сделать проект полностью с нуля
+
+
 дз ключи от юкассы 
 store payment info
 проверять оплату и давать ответ
 
 
-deploy to vps
-
-
-
 vide code
+
+
+
+docker build -t easy_bot_image .
+docker rm -f easy_refer
+docker run -it -d --env-file .env --restart=unless-stopped --name easy_refer easy_bot_image
