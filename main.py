@@ -1,16 +1,20 @@
-from openai import OpenAI
+
+from openai import AsyncOpenAI
+from openai import APIConnectionError
 import asyncio
 import logging
 import sys
-import os
-from datetime import datetime
+from os import getenv
+from io import BytesIO
 
+from datetime import datetime
 from aiogram import Bot, Dispatcher, html
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.filters import CommandStart
 from aiogram.types import Message
 from dotenv import load_dotenv
+
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
