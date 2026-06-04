@@ -1,3 +1,4 @@
+
 from typing import List
 
 from sqlalchemy.orm import DeclarativeBase, relationship
@@ -20,6 +21,7 @@ class User(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     created_at: Mapped[datetime | None] = mapped_column(DateTime)
+
     first_name: Mapped[str] = mapped_column(String, nullable=True)
     last_name: Mapped[str] = mapped_column(String, nullable=True)
     username: Mapped[str] = mapped_column(String, nullable=True)
@@ -35,3 +37,4 @@ class Usage(Base):
     tokens: Mapped[int | None]
 
     user: Mapped[User] = relationship(back_populates="usages")
+

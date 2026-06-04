@@ -42,6 +42,7 @@ def run_migrations_offline() -> None:
         url=url,
         target_metadata=target_metadata,
         render_as_batch=True,
+
     )
 
     with context.begin_transaction():

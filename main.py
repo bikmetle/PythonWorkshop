@@ -1,3 +1,4 @@
+
 from openai import AsyncOpenAI
 from openai import APIConnectionError
 import asyncio
@@ -14,53 +15,71 @@ from aiogram.filters import CommandStart
 from aiogram.types import Message
 from dotenv import load_dotenv
 
-from models import Usage, User
-from utils import add_object, get_usage, message_text, voice_message_text
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session
 
+from models import Usage, User, engine
 load_dotenv()
 
-TOKEN = getenv("TOKEN")
-OPENAI_TOKEN = getenv("OPENAI_TOKEN")
+
+TOKEN = os.getenv("TOKEN")
+OPENAI_TOKEN = os.getenv("OPENAI_TOKEN")
 
 dp = Dispatcher()
-client = AsyncOpenAI(api_key=OPENAI_TOKEN)
+client = OpenAI(api_key=OPENAI_TOKEN)
+
 
 @dp.message(CommandStart())
 async def command_start_handler(message: Message) -> None:
-    user = User(
-            id=message.from_user.id, created_at=datetime.now(), first_name=message.from_user.first_name, last_name=message.from_user.last_name, username=message.from_user.username
+    with Session(engine) as session:
+        session.add(
+            User(
+                id=message.from_user.id,
+                created_at=datetime.now(),
+                first_name=message.from_user.first_name,
+                last_name=message.from_user.last_name,
+                username=message.from_user.username,
+            )
         )
-    add_object(user)
+        session.commit()
+
     await message.answer(f"Hello, {html.bold(message.from_user.full_name)}!")
 
+
 @dp.message()
-async def echo_handler(message: Message, bot: Bot) -> None:
-    try:
-        total_tokens = get_usage(message.from_user.id)
-
-        if total_tokens > 200:
-            await message.answer("Бесплатная версия закончилась. Оплатите, чтобы продолжить пользоваться данным ChatGPT!")
-            return
-        
-        if message.text:
-            total_tokens = await message_text(message, client)
-
-        elif message.voice:
-            total_tokens = await voice_message_text(message, bot, client)
-
-        else:
-            await message.answer(
-                "Ну ты конечно красавчик, я не отрицаю, но давай мне текст или голосовое сообщение своё сюда!"
+async def echo_handler(message: Message) -> None:
+    with Session(engine) as session:
+        total_tokens = session.scalar(
+            select(func.coalesce(func.sum(Usage.tokens), 0)).where(
+                Usage.user_id == message.from_user.id
             )
-            return
-        usage = Usage(
-            user_id=message.from_user.id, created_at=datetime.now(), tokens=total_tokens
         )
-        add_object(usage)
-    except Exception as e:
-        logging.exception(e)
-        await message.answer("Произошла ошибка при обращении к OpenAI.")
 
+    if total_tokens >= 100:
+        await message.answer("Бесплатная версия закончилась, оплатите подписку что бы продолжить")
+        return
+
+    if message.text:
+        response = client.responses.create(
+            model="gpt-5.5",
+            input=message.text,
+        )
+
+        tokens_spent = response.usage.total_tokens
+        with Session(engine) as session:
+            session.add(
+                Usage(
+                    user_id=message.from_user.id,
+                    created_at=datetime.now(),
+                    tokens=tokens_spent,
+                )
+            )
+            session.commit()
+
+        await message.answer(response.output_text)
+
+    else:
+        await message.answer("Nice try")
 
 
 async def main() -> None:
