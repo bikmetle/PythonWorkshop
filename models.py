@@ -4,7 +4,7 @@ from typing import List
 from sqlalchemy.orm import DeclarativeBase, relationship
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column, sessionmaker
-from sqlalchemy import String, Integer, DateTime
+from sqlalchemy import ForeignKey, String, Integer, DateTime
 from datetime import datetime
 from sqlalchemy import create_engine
 
@@ -26,11 +26,11 @@ class User(Base):
     usages: Mapped[List["Usage"]] = relationship(back_populates="user")
                                                  
 class Usage(Base):
-	__tablename__ = "usages"
+    __tablename__ = "usages"
 
-	id: Mapped[int] = mapped_column(primary_key=True)
-	tg_id: Mapped[int] = mapped_column(Integer)
-	created_at: Mapped[datetime] = mapped_column(DateTime)
-	tokens: Mapped[int] = mapped_column(Integer)
-    
-Base.metadata.create_all(engine)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=True)
+    created_at: Mapped[datetime | None] = mapped_column(DateTime)
+    tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    user: Mapped[User] = relationship(back_populates="usages")

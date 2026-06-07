@@ -20,14 +20,14 @@ def add_usage(usage: Usage) -> None:
         else:
             session.commit()
 
-def get_usage(tg_id: int) -> int:
-    statement = select(Usage).where(Usage.tg_id == tg_id)
+def get_usage(user_id: int) -> int:
+    statement = select(Usage).where(Usage.user_id == user_id)
     with Session() as session:
         db_objects = session.scalars(statement).all()
     return sum(row.tokens for row in db_objects if row.tokens)
 
-def check_tokens_limit(tg_id: int) -> bool:
-    total_spent = get_usage(tg_id)
+def check_tokens_limit(user_id: int) -> bool:
+    total_spent = get_usage(user_id)
     return total_spent < FREE_TOKEN_LIMIT
 
 async def process_voice_message(message: Message, bot: Bot, client: AsyncOpenAI) -> None:
@@ -58,9 +58,8 @@ async def process_voice_message(message: Message, bot: Bot, client: AsyncOpenAI)
         tokens_used = response.usage.total_tokens
 
         new_log = Usage(
-            tg_id=user_id, 
-            created_at=datetime.now(), 
-            request_text=user_text, 
+            user_id=user_id,
+            created_at=datetime.now(),
             tokens=tokens_used
         )
         add_usage(new_log)
@@ -70,7 +69,6 @@ async def process_voice_message(message: Message, bot: Bot, client: AsyncOpenAI)
             voice="alloy",
             input=ai_text
         )
-        await tts_response.aread()
         tts_response.stream_to_file(output_audio_path)
 
         reply_voice = FSInputFile(output_audio_path)
@@ -92,9 +90,8 @@ async def process_text_message(message: Message, client: AsyncOpenAI) -> None:
     tokens_used = response.usage.total_tokens
 
     new_log = Usage(
-        tg_id=user_id, 
-        created_at=datetime.now(), 
-        request_text=message.text, 
+        user_id=user_id,
+        created_at=datetime.now(),
         tokens=tokens_used
     )
     add_usage(new_log)
