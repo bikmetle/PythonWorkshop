@@ -1,4 +1,5 @@
 from openai import OpenAI
+from openai import APIError, RateLimitError
 import asyncio
 import logging
 import sys
@@ -56,23 +57,31 @@ async def echo_handler(message: Message) -> None:
         return
 
     if message.text:
-        response = client.responses.create(
-            model="gpt-5.5",
-            input=message.text,
-        )
-
-        tokens_spent = response.usage.total_tokens
-        with Session(engine) as session:
-            session.add(
-                Usage(
-                    user_id=message.from_user.id,
-                    created_at=datetime.now(),
-                    tokens=tokens_spent,
-                )
+        try:
+            response = client.responses.create(
+                model="gpt-4o-mini",
+                input=message.text,
             )
-            session.commit()
 
-        await message.answer(response.output_text)
+            tokens_spent = response.usage.total_tokens
+            with Session(engine) as session:
+                session.add(
+                    Usage(
+                        user_id=message.from_user.id,
+                        created_at=datetime.now(),
+                        tokens=tokens_spent,
+                    )
+                )
+                session.commit()
+
+            await message.answer(response.output_text)
+        except RateLimitError:
+            await message.answer("Сейчас у OpenAI закончилась квота, попробуйте позже.")
+        except APIError as e:
+            await message.answer(f"OpenAI вернул ошибку: {e}")
+        except Exception as e:
+            logging.exception("OpenAI request failed")
+            await message.answer("Не удалось получить ответ от AI. Попробуйте позже.")
 
     else:
         await message.answer("Nice try")
